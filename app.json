@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "PrevClima",
+    "slug": "prevclima",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "br.tcc.prevclima"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0c1925",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "br.tcc.prevclima"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "O PrevClima usa sua localização para mostrar a previsão e os avisos da sua região."
+        }
+      ]
+    ],
+    "scheme": "prevclima",
+    "backgroundColor": "#0c1925",
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
