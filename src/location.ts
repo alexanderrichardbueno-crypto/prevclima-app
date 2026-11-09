@@ -22,7 +22,23 @@ export type DevicePlace = { latitude: number; longitude: number; city: string | 
 
 const RECENT_POSITION_MS = 15 * 60 * 1000;
 const POSITION_TIMEOUT_MS = 10000;
+const GEOCODE_TIMEOUT_MS = 5000;
 let askedThisSession = false;
+
+async function withTimeout<T>(task: Promise<T>, ms: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([task, new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), ms); })]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Posição recente ou atual; a atual pode demorar muito em ambientes fechados e não tem limite próprio. */
+async function devicePosition() {
+  const recent = await Location.getLastKnownPositionAsync({ maxAge: RECENT_POSITION_MS });
+  return recent ?? withTimeout(Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }), POSITION_TIMEOUT_MS);
+}
 
 /** Coordenadas aproximadas para a seção de alertas; null sem permissão ou sem sinal. */
 export async function regionCoordinates(): Promise<{ latitude: string; longitude: string } | null> {
@@ -33,12 +49,7 @@ export async function regionCoordinates(): Promise<{ latitude: string; longitude
       permission = await Location.requestForegroundPermissionsAsync();
     }
     if (!permission.granted) return null;
-    const recent = await Location.getLastKnownPositionAsync({ maxAge: RECENT_POSITION_MS });
-    // A posição atual pode demorar muito em ambientes fechados e não tem tempo limite próprio.
-    const position = recent ?? (await Promise.race([
-      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), POSITION_TIMEOUT_MS)),
-    ]));
+    const position = await devicePosition();
     if (!position) return null;
     return { latitude: position.coords.latitude.toFixed(2), longitude: position.coords.longitude.toFixed(2) };
   } catch {
@@ -50,13 +61,15 @@ export async function regionCoordinates(): Promise<{ latitude: string; longitude
 export async function currentPlace(): Promise<DevicePlace> {
   const permission = await Location.requestForegroundPermissionsAsync();
   if (permission.status !== "granted") throw new Error("Permissão de localização negada. Você pode ativá-la nas configurações do aparelho.");
-  const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+  const position = await devicePosition().catch(() => null);
+  if (!position) throw new Error("Não foi possível obter sua localização. Verifique se o GPS está ligado ou use a busca por cidade.");
   const latitude = Number(position.coords.latitude.toFixed(6));
   const longitude = Number(position.coords.longitude.toFixed(6));
   let city: string | null = null;
   let state: string | null = null;
   try {
-    const [place] = await Location.reverseGeocodeAsync({ latitude, longitude });
+    const places = await withTimeout(Location.reverseGeocodeAsync({ latitude, longitude }), GEOCODE_TIMEOUT_MS);
+    const place = places?.[0];
     if (place && (!place.isoCountryCode || place.isoCountryCode === "BR")) {
       city = place.city ?? place.subregion ?? null;
       state = toUf(place.region);

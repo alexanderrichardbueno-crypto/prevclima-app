@@ -12,6 +12,7 @@ export function useMapData(initialQuery = "") {
   const [status, setStatus] = useState("Consultando fontes meteorológicas…");
   const [recenterKey, setRecenterKey] = useState(0);
   const requestId = useRef(0);
+  const recenterPending = useRef(false);
 
   const fetchData = useCallback(async (next: string) => {
     const id = ++requestId.current;
@@ -21,9 +22,17 @@ export function useMapData(initialQuery = "") {
       setData(result);
       setError("");
       setStatus(`Consulta ${dateTime(result.generated_at).slice(-5)} · atualização automática a cada 5 min`);
+      // Junto com os dados novos: antes deles, o mapa centralizaria no ponto antigo.
+      if (recenterPending.current) {
+        recenterPending.current = false;
+        setRecenterKey((key) => key + 1);
+      }
       return true;
     } catch (err) {
-      if (id === requestId.current) setError((err as Error).message);
+      if (id === requestId.current) {
+        recenterPending.current = false;
+        setError((err as Error).message);
+      }
       return false;
     }
   }, []);
@@ -39,8 +48,8 @@ export function useMapData(initialQuery = "") {
   /** Nova busca: troca os parâmetros e recentraliza o mapa. */
   const search = useCallback(
     async (next: string) => {
+      recenterPending.current = true;
       setQuery(next);
-      setRecenterKey((key) => key + 1);
       return fetchData(next);
     },
     [fetchData],
