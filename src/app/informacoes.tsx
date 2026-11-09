@@ -41,7 +41,7 @@ export default function EducationScreen() {
           <Title size={18}>{item.title}</Title>
           <Body size={14}>{item.body}</Body>
           {item.media_url ? <SvgUri uri={`${getServer()}${item.media_url}`} width="100%" height={140} /> : null}
-          <SourceLink url={/^https?:\/\//.test(item.reference_url) ? item.reference_url : null} label="Consultar fonte oficial ↗" />
+          <SourceLink url={/^https?:\/\//.test(item.reference_url) ? item.reference_url : null} label="Consultar fonte ↗" />
         </Card>
       ))}
     </Screen>
